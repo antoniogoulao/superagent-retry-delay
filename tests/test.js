@@ -8,9 +8,9 @@ require('../')(agent)
 require('should')
 const http = require('http')
 
-http.globalAgent.maxSockets = 2000
+http.globalAgent.maxSockets = 10000
 
-describe('superagent-retry-delay', function () {
+describe('superagent-retry-header-delay', function () {
   describe('not-errors', function () {
     let requests = 0
     const port = 10410
@@ -41,34 +41,79 @@ describe('superagent-retry-delay', function () {
     after(function (done) { server.close(done) })
   })
 
-  describe('handled errors', function () {
-    let requests = 0
+  describe('429 handled error without header', function () {
     const port = 10410
     const app = express()
     let server
 
     before(function (done) {
       app.get('/', function (req, res, next) {
-        requests++
-        if (requests === 1) {
-          res.sendStatus(401)
-        } else if (requests === 2) {
-          res.sendStatus(409)
-        } else {
-          res.sendStatus(404)
-        }
+        res.sendStatus(429)
       })
 
       server = app.listen(port, done)
     })
 
-    it('should not retry on handled errors', function (done) {
+    it('should retry on 429 error', function (done) {
       agent
         .get('http://localhost:' + port)
-        .retry(5, [404])
+        .retry(5, [429])
         .end(function (err, res) {
-          res.status.should.eql(404)
-          requests.should.eql(3)
+          res.status.should.eql(429)
+          done(err)
+        })
+    })
+
+    after(function (done) { server.close(done) })
+  })
+
+  describe('429 handled error with Retry-After header', function () {
+    const port = 10410
+    const app = express()
+    let server
+
+    before(function (done) {
+      app.get('/', function (req, res, next) {
+        res.append('Retry-After', 5)
+        res.sendStatus(429)
+      })
+
+      server = app.listen(port, done)
+    })
+
+    it('should retry on 429 error', function (done) {
+      agent
+        .get('http://localhost:' + port)
+        .retry(5, [429])
+        .end(function (err, res) {
+          res.status.should.eql(429)
+          done(err)
+        })
+    })
+
+    after(function (done) { server.close(done) })
+  })
+
+  describe('429 handled error with X-Rate-Limit-Retry-After-Seconds header', function () {
+    const port = 10410
+    const app = express()
+    let server
+
+    before(function (done) {
+      app.get('/', function (req, res, next) {
+        res.append('X-Rate-Limit-Retry-After-Seconds', 5)
+        res.sendStatus(429)
+      })
+
+      server = app.listen(port, done)
+    })
+
+    it('should retry on 429 error', function (done) {
+      agent
+        .get('http://localhost:' + port)
+        .retry(5, [429])
+        .end(function (err, res) {
+          res.status.should.eql(429)
           done(err)
         })
     })
@@ -190,7 +235,7 @@ describe('superagent-retry-delay', function () {
 
       agent
         .get('http://localhost:' + port)
-        .retry(5)
+        .retry(5, [404])
         .end(function (err, res) {
           res.text.should.eql('hello!')
           requests.should.eql(5)
@@ -201,7 +246,7 @@ describe('superagent-retry-delay', function () {
     after(function (done) { server.close(done) })
   })
 
-  describe('401 errors', function () {
+  describe('101 informational', function () {
     let requests = 0
     const port = 10410
     const app = express()
@@ -213,7 +258,7 @@ describe('superagent-retry-delay', function () {
         if (requests > 4) {
           res.send('hello!')
         } else {
-          res.sendStatus(401)
+          res.sendStatus(101)
         }
       })
 
@@ -224,7 +269,7 @@ describe('superagent-retry-delay', function () {
       agent
         .get('http://localhost:' + port)
         .end(function (err, res) {
-          res.status.should.eql(401)
+          res.status.should.eql(101)
 
           // appease eslint, do nothing with error to allow it to bubble up
           if (err) { }
@@ -232,7 +277,7 @@ describe('superagent-retry-delay', function () {
 
       agent
         .get('http://localhost:' + port)
-        .retry(5)
+        .retry(5, [101])
         .end(function (err, res) {
           res.text.should.eql('hello!')
           requests.should.eql(5)
