@@ -1,22 +1,23 @@
 {
-  "name": "superagent-retry-delay",
-  "version": "2.1.2",
-  "description": "A retrying layer for a superagent request with delay support",
+  "name": "superagent-retry-header-delay",
+  "version": "1.0.0",
+  "description": "A retrying layer for a superagent request with delay support defined by the server",
   "license": "MIT",
   "keywords": [
     "superagent",
     "retry",
-    "delay"
+    "delay",
+    "header"
   ],
-  "author": "Luis Pabon <luis.pabon@auronconsulting.co.uk>",
+  "author": "Antonio Goulao <antoniomgoulao@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git://github.com/luispabon/superagent-retry-delay.git"
+    "url": "git://github.com/antoniogoulao/superagent-retry-header-delay"
   },
   "main": "src/index",
   "dependencies": {},
   "peerDependencies": {
-    "superagent": "~3.5.0"
+    "superagent": "~3.8.3"
   },
   "devDependencies": {
     "eslint": "*",
@@ -29,7 +30,7 @@
     "express": "*",
     "mocha": "*",
     "should": "*",
-    "superagent": "~3.5.0"
+    "superagent": "^3.8.3"
   },
   "scripts": {
     "test": "node_modules/.bin/mocha --recursive --timeout=20000 tests/",

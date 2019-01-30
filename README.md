@@ -1,8 +1,8 @@
 # superagent-retry-delay
 
-  Extends the node version of [superagent][https://github.com/visionmedia/superagent]'s `Request`, adds a `.retry` method to add retrying logic to the request. Calling this will retry the request however many additional times you'd like after a specified delay in miliseconds.
+  Extends the node version of [superagent][https://github.com/visionmedia/superagent]'s `Request`, adds a `.retry` method to add retrying logic to the request. Calling this will retry the request however many additional times you'd like with 1 second in between retries or after a specified amount of time, in seconds, included in the HTTP header. You can specify which header to use to read the amount of time.
 
-  It will retry on any error condition, except for the list of response codes optionally supplied.
+  It will retry on any 500 error and on those on the list of 100s and 400s response codes optionally supplied.
 
   v2 relies on superagent's internal retry mechanism for retrying, added on superagent 3.5. Use v1 otherwise.
 
@@ -17,7 +17,17 @@ require('superagent-retry-delay')(superagent);
 
 superagent
   .get('https://segment.io')
-  .retry(2, 5000, [401, 404]) // retry twice before responding, wait 5 seconds between failures, do not retry when response is success, or 401 or 404
+  .retry(2, [429], 'Retry-After') // retry twice for error 429 before responding, wait the number of seconds specified in Retry-After header between failures
+  .end(onresponse);
+
+superagent
+  .get('https://segment.io')
+  .retry(2, [429]) // retry twice for error 429 before responding, wait 1 second between failures
+  .end(onresponse);
+
+superagent
+  .get('https://segment.io')
+  .retry(2) // retry twice for any HTTP 500 error before responding, wait 1 second between failures
   .end(onresponse);
 
 function onresponse (err, res) {
@@ -37,18 +47,18 @@ const supertest = require('supertest');
 
 ## Mocha users
 
-  Ensure your mocha timeout for tests (default is 2000ms) is long enough to accommodate for all possible retries, including the specified delays.
+  Ensure your mocha timeout for tests (default is 10000ms) is long enough to accommodate for all possible retries, including the specified delays.
 
 ## Retrying Cases
 
-  Currently the retrying logic checks for any error, but it will allow a list of status codes to avoid retrying - this is handy if you're testing say 404's.
+  Currently the retrying logic checks only for the codes 100s and 400s errors specified in the list.
 
 
 ## License
 
 (The MIT License)
 
-Copyright (c) 2013 Luis Pabon &lt;http://github.com/luispabon&gt;
+Copyright (c) 2019 Antonio Goulao &lt;http://github.com/antoniogoulao&gt;
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

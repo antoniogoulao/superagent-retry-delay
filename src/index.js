@@ -3,29 +3,32 @@
  */
 
 module.exports = function (superagent) {
-  const Request = superagent.Request
+  if (superagent) {
+    const Request = superagent.Request
 
-  Request.prototype.oldRetry = Request.prototype.retry
-  Request.prototype.retry = retry
-  Request.prototype.callback = callback
+    Request.prototype.oldRetry = Request.prototype.retry
+    Request.prototype.retry = retry
+    Request.prototype.callback = callback
 
-  return superagent
+    return superagent
+  }
 }
 
 /**
  * Works out whether we should retry, based on the number of retries, on any passed
  * errors and response and compared against a list of allowed error statuses.
  *
- * @param {Number} retries
- * @param {Error} err
  * @param {Response} res
+ * @param {Error} err
+ * @param {Number} allowedStatuses
  */
 function shouldRetry (err, res, allowedStatuses) {
   const ERROR_CODES = [
     'ECONNRESET',
     'ETIMEDOUT',
     'EADDRINFO',
-    'ESOCKETTIMEDOUT'
+    'ESOCKETTIMEDOUT',
+    'ENOTFOUND'
   ]
 
   if (err && err.code && ~ERROR_CODES.indexOf(err.code)) {
@@ -39,7 +42,7 @@ function shouldRetry (err, res, allowedStatuses) {
       return true
     }
 
-    if ((status >= 400 || status < 200) && allowedStatuses.indexOf(status) === -1) {
+    if ((status >= 400 || status < 200) && allowedStatuses.indexOf(status) !== -1) {
       return true
     }
   }
@@ -49,17 +52,13 @@ function shouldRetry (err, res, allowedStatuses) {
     return true
   }
 
-  if (err && 'crossDomain' in err) {
-    return true
-  }
-
-  return false
+  return !!(err && 'crossDomain' in err)
 }
 
 /**
  * Override Request callback to set a timeout on the call to retry.
  *
- * This overrides crucial behaviour: it will retry on ANY error (eg 401...) due to shouldRetry having
+ * This overrides crucial behaviour: it will retry on ANY error (eg 429...) due to shouldRetry having
  * different behaviour.
  *
  * @param err
@@ -68,34 +67,33 @@ function shouldRetry (err, res, allowedStatuses) {
  */
 function callback (err, res) {
   if (this._maxRetries && this._retries++ < this._maxRetries && shouldRetry(err, res, this._allowedStatuses)) {
-    var req = this
+    let req = this
+    let timeout = this._responseHeader ? res.xhr.getResponseHeader(this._responseHeader) * 1000 : 1000
     return setTimeout(function () {
       return req._retry()
-    }, this._retryDelay)
+    }, timeout)
   }
 
-  var fn = this._callback
+  let fn = this._callback
   this.clearTimeout()
 
-  if (err) {
-    if (this._maxRetries) err.retries = this._retries - 1
-    this.emit('error', err)
-  }
+  if (err && this._maxRetries) err.retries = this._retries - 1
 
   fn(err, res)
 }
 
 /**
- * Override Request retry to also set a delay.
+ * Override Request retry to also set allowed statuses.
+ * Receives the number of retries and the HTTP codes on which retries should be
+ * performed. Optionally receives the response header where the waiting time is
+ * passed in seconds
  *
- * In miliseconds.
- *
- * @param {Number} retries
- * @param {Number} delay
- * @param {Number[]} allowedStatuses
+ * @param {Number} retries - number of retries to perform
+ * @param {Number[]} allowedStatuses - array with HTTP codes
+ * @param {String} responseHeader - waiting time between retries in seconds
  * @return {retry}
  */
-function retry (retries, delay, allowedStatuses) {
+function retry (retries, allowedStatuses, responseHeader) {
   if (arguments.length === 0 || retries === true) {
     retries = 1
   }
@@ -105,8 +103,8 @@ function retry (retries, delay, allowedStatuses) {
   }
 
   this._maxRetries = retries
+  this._responseHeader = responseHeader || null
   this._retries = 0
-  this._retryDelay = delay || 0
   this._allowedStatuses = allowedStatuses || []
 
   return this

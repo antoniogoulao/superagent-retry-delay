@@ -29,7 +29,7 @@ describe('superagent-retry-delay', function () {
     it('should not retry on success', function (done) {
       agent
         .get('http://localhost:' + port)
-        .retry(5, 17)
+        .retry(5)
         .end(function (err, res) {
           res.text.should.eql('hello!')
           requests.should.eql(1)
@@ -65,7 +65,7 @@ describe('superagent-retry-delay', function () {
     it('should not retry on handled errors', function (done) {
       agent
         .get('http://localhost:' + port)
-        .retry(5, 13, [404])
+        .retry(5, [404])
         .end(function (err, res) {
           res.status.should.eql(404)
           requests.should.eql(3)
@@ -107,7 +107,7 @@ describe('superagent-retry-delay', function () {
 
       agent
         .get('http://localhost:' + port)
-        .retry(5, 17)
+        .retry(5)
         .end(function (err, res) {
           res.text.should.eql('hello!')
           done(err)
@@ -148,7 +148,7 @@ describe('superagent-retry-delay', function () {
 
       agent
         .get('http://localhost:' + port)
-        .retry(5, 13)
+        .retry(5)
         .end(function (err, res) {
           res.text.should.eql('hello!')
           requests.should.eql(5)
@@ -190,7 +190,7 @@ describe('superagent-retry-delay', function () {
 
       agent
         .get('http://localhost:' + port)
-        .retry(5, 13)
+        .retry(5)
         .end(function (err, res) {
           res.text.should.eql('hello!')
           requests.should.eql(5)
@@ -232,7 +232,7 @@ describe('superagent-retry-delay', function () {
 
       agent
         .get('http://localhost:' + port)
-        .retry(5, 13)
+        .retry(5)
         .end(function (err, res) {
           res.text.should.eql('hello!')
           requests.should.eql(5)
