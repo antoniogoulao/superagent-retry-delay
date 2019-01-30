@@ -1,4 +1,4 @@
-# superagent-retry-delay
+# superagent-retry-header-delay
 
   Extends the node version of [superagent][https://github.com/visionmedia/superagent]'s `Request`, adds a `.retry` method to add retrying logic to the request. Calling this will retry the request however many additional times you'd like with 1 second in between retries or after a specified amount of time, in seconds, included in the HTTP header. You can specify which header to use to read the amount of time.
 
